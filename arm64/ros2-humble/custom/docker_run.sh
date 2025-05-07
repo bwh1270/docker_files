@@ -4,14 +4,18 @@
 # parsing the arguments
 if [ -z "$1" ] || [ -z "$2" ]; then
     echo "Two arguments are required."
-    echo "Usage: bash docker_run.sh <container_name> <image_name>"
+    echo "Usage: bash docker_run.sh <container_name> <image_name:tag>"
     exit 1
-
 else
     CONTAINER_NAME=$1
     IMAGE_NAME=$2
-fi
 
+    # Check if tag is included in image name
+    if [[ "$IMAGE_NAME" != *:* ]]; then
+        echo "Error: IMAGE_NAME must include a tag"
+        exit 1
+    fi
+fi
 
 #2#
 # Set optional arguments and flags
@@ -42,11 +46,6 @@ DISPLAY_DEVICE=""
 if [ -n "$DISPLAY" ]; then
 	# give docker root user X11 permissions
 	xhost +si:localuser:root || sudo xhost +si:localuser:root
-	
-	# enable SSH X11 forwarding inside container (https://stackoverflow.com/q/48235040)
-	XAUTH=/tmp/.docker.xauth
-	xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
-	chmod 777 $XAUTH
 
 	DISPLAY_DEVICE="-e DISPLAY=$DISPLAY -v /tmp/.X11-unix/:/tmp/.X11-unix -v $XAUTH:$XAUTH -e XAUTHORITY=$XAUTH"
 fi
@@ -88,10 +87,6 @@ ARCH=$(uname -i)
 
 if [ $ARCH = "aarch64" ]; then
 
-    # this file shows what Jetson board is running
-	# /proc or /sys files aren't mountable into docker
-	cat /proc/device-tree/model > /tmp/nv_jetson_model
-
     set -x
 
     # If the container exists, remove it to avoid conflict
@@ -99,18 +94,18 @@ if [ $ARCH = "aarch64" ]; then
         docker rm $CONTAINER_NAME
     fi
 
-    docker run -it --network=host --runtime=nvidia --shm-size=8g \
+    docker run -it --network=host --runtime=nvidia --shm-size=8g --gpus all \
         --volume /tmp/argus_socket:/tmp/argus_socket \
 		--volume /etc/enctune.conf:/etc/enctune.conf \
 		--volume /etc/nv_tegra_release:/etc/nv_tegra_release \
-		--volume /tmp/nv_jetson_model:/tmp/nv_jetson_model \
 		--volume /var/run/dbus:/var/run/dbus \
 		--volume /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
 		--volume /var/run/docker.sock:/var/run/docker.sock \
-        --volume $ROOT/to_copy:/root/ \
-        --device /dev/bus/usb \
-		--device /dev/ttyUSB0 \
+        --volume /dev:/dev \
         $OPTIONAL_PERMISSION_ARGS $DATA_VOLUME $DISPLAY_DEVICE $V4L2_DEVICES $I2C_DEVICES $JTOP_SOCKET $EXTRA_FLAGS \
+        --device /dev/ttyACM0 \
+        --device /dev/input/js0 \
+        --privileged\
         --name $CONTAINER_NAME \
         $IMAGE_NAME \
         /bin/bash
