@@ -7,8 +7,12 @@ IMAGE_NAME=$2
 # https://www.talkingquickly.co.uk/2021/01/tmux-ssh-agent-forwarding-vs-code/
 ln -sf $SSH_AUTH_SOCK ~/.ssh/ssh_auth_sock
 
+echo 'xhost +local:root'
+
 docker run \
   -it \
+  --gpus all \
+  --shm-size=16g \
   --network host \
   --privileged \
   --volume /dev:/dev \
