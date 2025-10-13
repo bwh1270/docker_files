@@ -73,17 +73,17 @@ Note: You might add the ```sudo```.
 ## Usage 2.
 
 - Save docker container to docker image
-    '''bash
+    ```bash
     # save to image
     docker commit <container_name> <image_name>:<tag>
 
     # save to .tar and load it
-    docker save - o <save_name.tar> <image_name>:<tag>
+    docker save -o <save_name.tar> <image_name>:<tag>
     docker load -i <save_name.tar>
-    '''
+    ```
 
 - CLI
-    '''bash
+    ```bash
     docker images
     docker rmi <image_id>
 
@@ -99,4 +99,4 @@ Note: You might add the ```sudo```.
     dra() {
         docker restart "$1" && docker attach "$1"
     }
-    '''
+    ```
